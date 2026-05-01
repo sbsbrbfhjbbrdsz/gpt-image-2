@@ -11,19 +11,14 @@
 
 ## 使用
 
-需要先安装 Node.js。
+没有 Node.js。需要安装
 
-双击：
+已有 Node.js 可以直接运行：
 
 ```text
 start-tool.bat
 ```
 
-或手动运行：
-
-```bash
-node server.js
-```
 
 然后打开：
 
