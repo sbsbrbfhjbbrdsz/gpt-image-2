@@ -13,6 +13,8 @@
 
 ## 使用
 
+不要直接打开index.html 来用
+
 没有 Node.js。需要安装
 
 已有 Node.js 可以直接运行：
