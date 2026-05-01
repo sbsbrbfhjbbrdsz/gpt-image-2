@@ -1664,6 +1664,9 @@
     if ("actualSize" in patch || "categoryIds" in patch) {
       window.ImageToolGallery.syncItemFilterState(item, state.galleryFilter, el.imageGallery);
     }
+    if ("categoryIds" in patch) {
+      renderGalleryFilters();
+    }
     if (item.classList.contains("active")) {
       el.resultMeta.textContent = `已选 · ${item.galleryData.mode} · ${item.galleryData.actualSize}`;
       if (el.imageModal && !el.imageModal.hidden) {
