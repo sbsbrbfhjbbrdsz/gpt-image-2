@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>张元英才是五女一</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <button id="sitePanelToggle" class="site-toggle" type="button" aria-label="站点设置" title="站点设置">
+        <img src="./mao.svg" alt="">
+      </button>
+      <div id="sitePanel" class="settings-panel site-panel" aria-label="站点设置" hidden>
+        <div class="site-panel-head">
+          <div class="site-picker" aria-label="站点选择">
+            <div id="siteList" class="site-list" role="listbox"></div>
+          </div>
+        </div>
+        <div class="settings-grid site-connection-grid">
+          <label for="siteName">
+            站点名称
+            <input id="siteName" type="text" autocomplete="off" placeholder="张元英才是五女一" spellcheck="false">
+          </label>
+          <div class="site-panel-actions site-name-actions">
+            <button id="addSite" type="button" class="ghost">添加</button>
+            <button id="deleteSite" type="button" class="ghost danger">删除</button>
+          </div>
+          <label for="baseUrl">
+            站点/API 地址
+            <input id="baseUrl" type="text" autocomplete="off" placeholder="输入站点/API 地址" spellcheck="false">
+          </label>
+          <label for="apiKey">
+            API Key
+            <span class="key-row">
+              <input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." spellcheck="false">
+            </span>
+          </label>
+        </div>
+        <div class="settings-actions">
+          <button id="saveKey" type="button">保存站点</button>
+          <button id="fetchModels" type="button" class="ghost">获取模型</button>
+          <label class="site-tool-choice-field">
+            <span>Resp工具</span>
+            <select id="responsesToolChoice">
+              <option value="image_generation">图片</option>
+              <option value="required">强制</option>
+              <option value="auto">自动</option>
+            </select>
+          </label>
+          <label class="site-concurrency-field">
+            <span>并发</span>
+            <input id="siteConcurrency" type="number" min="1" max="10" step="1" inputmode="numeric">
+          </label>
+          <label class="checkbox-field site-proxy-field">
+            <input id="useProxy" type="checkbox">
+            <span>代理</span>
+          </label>
+        </div>
+        <div class="model-library-wrap">
+          <details class="model-library" id="modelLibraryDetails">
+            <summary>模型列表</summary>
+            <div id="modelLibrary" class="model-library-list"></div>
+          </details>
+          <a class="model-library-github" href="https://github.com/sbsbrbfhjbbrdsz/image2" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库" title="GitHub 仓库">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 2C6.48 2 2 6.58 2 12.22c0 4.5 2.86 8.32 6.84 9.67.5.09.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.36 1.12 2.94.85.09-.66.35-1.12.64-1.37-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.71 0 0 .84-.28 2.75 1.05A9.32 9.32 0 0 1 12 6.43c.85 0 1.7.12 2.5.34 1.9-1.33 2.74-1.05 2.74-1.05.55 1.4.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.78-4.57 5.04.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.08 10.08 0 0 0 22 12.22C22 6.58 17.52 2 12 2Z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <section class="tabs" role="tablist" aria-label="模式">
+      <button class="tab-button active" type="button" role="tab" aria-selected="true" data-tab="generate">文生图</button>
+      <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="image">图生图</button>
+      <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="edit">精修图</button>
+      <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="responses">流式</button>
+    </section>
+
+    <section class="workspace">
+      <div class="panel form-panel">
+        <div id="rotationSummary" class="rotation-summary" aria-live="polite">
+          <span id="rotationSiteList" class="rotation-site-list" hidden></span>
+        </div>
+        <form id="generateForm" class="tab-panel active" data-panel="generate">
+          <div class="field">
+            <label for="generatePrompt">提示词</label>
+            <textarea id="generatePrompt" rows="9" placeholder="描述你要生成的图片，例如：一张干净的产品海报，玻璃香水瓶置于浅灰背景，柔和影子，商业摄影风格。"></textarea>
+          </div>
+          <div class="upload-panel">
+            <span class="upload-field disabled">
+              <span>原图</span>
+              <span class="upload-button" aria-disabled="true">+</span>
+            </span>
+            <span class="upload-field disabled">
+              <span>蒙版</span>
+              <span class="upload-button" aria-disabled="true">+</span>
+            </span>
+          </div>
+          <label class="mode-field">
+            模式
+            <select class="mode-select" aria-label="模式">
+              <option value="generate">文生图</option>
+              <option value="image">图生图</option>
+              <option value="edit">精修图</option>
+              <option value="responses">流式</option>
+            </select>
+          </label>
+          <div class="control-grid">
+            <label class="wide-field">
+              模型
+              <input id="generateModel" type="text" list="modelOptions" autocomplete="off" placeholder="gpt-image-2" spellcheck="false">
+            </label>
+            <label class="wide-field">
+              调用接口
+              <select id="generateApi">
+                <option value="image">Image</option>
+                <option value="responses-stream">Resp流</option>
+              </select>
+            </label>
+            <label>
+              尺寸
+              <select id="generateSize">
+                <option value="auto">auto</option>
+                <option value="1024x1024">1024x1024</option>
+                <option value="1536x1024">1536x1024</option>
+                <option value="1024x1536">1024x1536</option>
+                <option value="2048x2048">2048x2048</option>
+                <option value="2048x1152">2048x1152</option>
+                <option value="3840x2160">3840x2160</option>
+                <option value="2160x3840">2160x3840</option>
+              </select>
+            </label>
+            <label>
+              质量
+              <select id="generateQuality">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+            <label>
+              格式
+              <select id="generateFormat">
+                <option value="png">png</option>
+                <option value="jpeg">jpeg</option>
+                <option value="webp">webp</option>
+              </select>
+            </label>
+            <label>
+              审核
+              <select id="generateModeration">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label class="range-field">
+              压缩
+              <input id="generateCompression" type="number" min="0" max="100" step="1" value="0">
+            </label>
+            <label class="quantity-field">
+              数量
+              <input id="generateQuantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+            </label>
+            <label class="checkbox-field rotation-toggle-field">
+              <input id="useRotation" class="rotation-mode-toggle" type="checkbox">
+              <span>轮询模式</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="generateButton" type="submit">开始</button>
+          </div>
+        </form>
+
+        <form id="imageForm" class="tab-panel" data-panel="image">
+          <div class="input-previews" aria-live="polite">
+            <div class="preview-group">
+              <span class="preview-label">原图</span>
+              <div id="imageImagePreview" class="preview-strip"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="imagePrompt">图生图提示词</label>
+            <textarea id="imagePrompt" rows="7" placeholder="描述如何基于参考图生成，例如：保留主体轮廓和材质，改成高级商业摄影风格，深色棚拍背景。"></textarea>
+          </div>
+          <div class="upload-panel">
+            <span class="upload-field">
+              <span>原图</span>
+              <label class="upload-button" for="imageImages">+</label>
+              <input id="imageImages" type="file" accept="image/*" multiple>
+            </span>
+            <span class="upload-field disabled">
+              <span>蒙版</span>
+              <span class="upload-button" aria-disabled="true">+</span>
+            </span>
+          </div>
+          <label class="mode-field">
+            模式
+            <select class="mode-select" aria-label="模式">
+              <option value="generate">文生图</option>
+              <option value="image">图生图</option>
+              <option value="edit">精修图</option>
+              <option value="responses">流式</option>
+            </select>
+          </label>
+            <div class="control-grid">
+              <label class="wide-field">
+                模型
+                <input id="imageModel" type="text" list="modelOptions" autocomplete="off" placeholder="gpt-image-2" spellcheck="false">
+              </label>
+              <label class="wide-field">
+                调用接口
+                <select id="imageApi">
+                  <option value="image">Image</option>
+                  <option value="responses-stream">Resp流</option>
+                </select>
+              </label>
+              <label>
+                尺寸
+                <select id="imageSize">
+                  <option value="auto">auto</option>
+                  <option value="1024x1024">1024x1024</option>
+                  <option value="1536x1024">1536x1024</option>
+                  <option value="1024x1536">1024x1536</option>
+                  <option value="2048x2048">2048x2048</option>
+                  <option value="2048x1152">2048x1152</option>
+                  <option value="3840x2160">3840x2160</option>
+                  <option value="2160x3840">2160x3840</option>
+                </select>
+              </label>
+              <label>
+                质量
+                <select id="imageQuality">
+                  <option value="auto">auto</option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label>
+                格式
+                <select id="imageFormat">
+                  <option value="png">png</option>
+                  <option value="jpeg">jpeg</option>
+                  <option value="webp">webp</option>
+                </select>
+              </label>
+              <label>
+                审核
+                <select id="imageModeration">
+                  <option value="auto">auto</option>
+                  <option value="low">low</option>
+                </select>
+              </label>
+              <label class="range-field">
+                压缩
+                <input id="imageCompression" type="number" min="0" max="100" step="1" value="0">
+              </label>
+              <label class="quantity-field">
+                数量
+                <input id="imageQuantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+              </label>
+              <label class="checkbox-field rotation-toggle-field">
+                <input id="imageUseRotation" class="rotation-mode-toggle" type="checkbox">
+                <span>轮询模式</span>
+              </label>
+            </div>
+          <div class="actions">
+            <button id="imageButton" type="submit">开始</button>
+          </div>
+        </form>
+
+        <form id="editForm" class="tab-panel" data-panel="edit">
+          <div class="input-previews" aria-live="polite">
+            <div class="preview-group">
+              <span class="preview-label">原图</span>
+              <div id="editImagePreview" class="preview-strip"></div>
+            </div>
+            <div class="preview-group">
+              <span class="preview-label">蒙版</span>
+              <div id="editMaskPreview" class="preview-strip"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="editPrompt">精修提示词</label>
+            <textarea id="editPrompt" rows="7" placeholder="描述要精修的局部或整体，例如：只替换背景为高级摄影棚，主体保持不变，提升质感和光影。"></textarea>
+          </div>
+          <div class="upload-panel">
+            <span class="upload-field">
+              <span>原图</span>
+              <label class="upload-button" for="editImages">+</label>
+              <input id="editImages" type="file" accept="image/*" multiple>
+            </span>
+            <span class="upload-field">
+              <span>蒙版</span>
+              <label class="upload-button" for="editMask">+</label>
+              <input id="editMask" type="file" accept="image/png">
+            </span>
+          </div>
+          <label class="mode-field">
+            模式
+            <select class="mode-select" aria-label="模式">
+              <option value="generate">文生图</option>
+              <option value="image">图生图</option>
+              <option value="edit">精修图</option>
+              <option value="responses">流式</option>
+            </select>
+          </label>
+          <div class="control-grid">
+            <label class="wide-field">
+              模型
+              <input id="editModel" type="text" list="modelOptions" autocomplete="off" placeholder="gpt-image-2" spellcheck="false">
+            </label>
+            <label class="wide-field">
+              调用接口
+              <select id="editApi">
+                <option value="image">Image</option>
+                <option value="responses-stream">Resp流</option>
+              </select>
+            </label>
+            <label>
+              尺寸
+              <select id="editSize">
+                <option value="auto">auto</option>
+                <option value="1024x1024">1024x1024</option>
+                <option value="1536x1024">1536x1024</option>
+                <option value="1024x1536">1024x1536</option>
+                <option value="2048x2048">2048x2048</option>
+                <option value="2048x1152">2048x1152</option>
+                <option value="3840x2160">3840x2160</option>
+                <option value="2160x3840">2160x3840</option>
+              </select>
+            </label>
+            <label>
+              质量
+              <select id="editQuality">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+            <label>
+              格式
+              <select id="editFormat">
+                <option value="png">png</option>
+                <option value="jpeg">jpeg</option>
+                <option value="webp">webp</option>
+              </select>
+            </label>
+            <label>
+              审核
+              <select id="editModeration">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label class="range-field">
+              压缩
+              <input id="editCompression" type="number" min="0" max="100" step="1" value="0">
+            </label>
+            <label class="quantity-field">
+              数量
+              <input id="editQuantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+            </label>
+            <label class="checkbox-field rotation-toggle-field">
+              <input id="editUseRotation" class="rotation-mode-toggle" type="checkbox">
+              <span>轮询模式</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="editButton" type="submit">开始</button>
+          </div>
+        </form>
+
+        <form id="responsesForm" class="tab-panel" data-panel="responses">
+          <div class="input-previews" aria-live="polite">
+            <div class="preview-group">
+              <span class="preview-label">原图</span>
+              <div id="responsesImagePreview" class="preview-strip"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="responsesPrompt">输入</label>
+            <textarea id="responsesPrompt" rows="7" placeholder="Generate an image of a premium mechanical keyboard on a concrete desk, cinematic product photography."></textarea>
+          </div>
+          <div class="upload-panel">
+            <span class="upload-field">
+              <span>原图</span>
+              <label class="upload-button" for="responsesImages">+</label>
+              <input id="responsesImages" type="file" accept="image/*" multiple>
+            </span>
+            <span class="upload-field disabled">
+              <span>蒙版</span>
+              <span class="upload-button" aria-disabled="true">+</span>
+            </span>
+          </div>
+          <label class="mode-field">
+            模式
+            <select class="mode-select" aria-label="模式">
+              <option value="generate">文生图</option>
+              <option value="image">图生图</option>
+              <option value="edit">精修图</option>
+              <option value="responses">流式</option>
+            </select>
+          </label>
+          <div class="control-grid">
+            <label class="wide-field">
+              模型
+              <input id="responsesModel" type="text" list="modelOptions" autocomplete="off" placeholder="gpt-5.4" spellcheck="false">
+            </label>
+            <label>
+              动作
+              <select id="responsesAction">
+                <option value="auto">auto</option>
+                <option value="generate">generate</option>
+                <option value="edit">edit</option>
+              </select>
+            </label>
+            <label>
+              尺寸
+              <select id="responsesSize">
+                <option value="auto">auto</option>
+                <option value="1024x1024">1024x1024</option>
+                <option value="1536x1024">1536x1024</option>
+                <option value="1024x1536">1024x1536</option>
+                <option value="2048x2048">2048x2048</option>
+                <option value="2048x1152">2048x1152</option>
+                <option value="3840x2160">3840x2160</option>
+                <option value="2160x3840">2160x3840</option>
+              </select>
+            </label>
+            <label>
+              质量
+              <select id="responsesQuality">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+            <label>
+              格式
+              <select id="responsesFormat">
+                <option value="png">png</option>
+                <option value="jpeg">jpeg</option>
+                <option value="webp">webp</option>
+              </select>
+            </label>
+            <label>
+              审核
+              <select id="responsesModeration">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label class="range-field">
+              压缩
+              <input id="responsesCompression" type="number" min="0" max="100" step="1" value="0">
+            </label>
+            <label class="quantity-field">
+              数量
+              <input id="responsesQuantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+            </label>
+            <label class="checkbox-field rotation-toggle-field">
+              <input id="responsesUseRotation" class="rotation-mode-toggle" type="checkbox">
+              <span>轮询模式</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="responsesButton" type="submit">开始</button>
+          </div>
+        </form>
+      </div>
+
+      <section class="result-layout">
+        <section class="gallery-area">
+          <div class="gallery-toolbar">
+            <div class="gallery-filters" aria-label="画廊筛选">
+              <label>
+                <select id="galleryCategoryFilter" aria-label="分类"></select>
+              </label>
+              <label>
+                <select id="galleryResolutionFilter" aria-label="清晰度"></select>
+              </label>
+              <label>
+                <select id="galleryRatioFilter" aria-label="比例"></select>
+              </label>
+              <div id="galleryCategoryChips" class="gallery-filter-chips" aria-label="有图片的分类"></div>
+            </div>
+            <p id="resultMeta" hidden>等待提交任务</p>
+          </div>
+          <div id="imageGallery" class="gallery-grid" aria-live="polite"></div>
+        </section>
+      </section>
+    </section>
+  </main>
+  <pre id="statusLog" class="status-log-sink" hidden>就绪</pre>
+  <div id="dropOverlay" class="drop-overlay" hidden>
+    <div id="dropOriginal" class="drop-zone" data-drop-zone="original">
+      <strong>原图</strong>
+      <span>拖到这里上传图片</span>
+    </div>
+    <div id="dropMask" class="drop-zone" data-drop-zone="mask">
+      <strong>蒙版</strong>
+      <span>拖到这里上传 PNG</span>
+    </div>
+  </div>
+  <div id="imageModal" class="image-modal" hidden>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-body">
+        <div class="modal-image-frame">
+          <img id="modalImage" alt="画廊图片">
+          <div id="modalFailure" class="modal-failure" hidden></div>
+          <div id="modalGroupNav" class="modal-group-nav" hidden></div>
+        </div>
+        <aside class="modal-side">
+          <div class="modal-head">
+            <div>
+              <h2 id="modalTitle">图片详情</h2>
+              <p id="modalSubtitle"></p>
+            </div>
+            <div class="modal-actions">
+              <a id="modalDownload" class="download-link" href="#" download="vibeapi-image.png">下载</a>
+              <button id="modalClose" type="button" class="ghost">关闭</button>
+            </div>
+          </div>
+          <div id="modalDetails" class="modal-details"></div>
+          <div id="modalCategories" class="modal-detail-row wide category-detail modal-categories" hidden></div>
+          <div class="modal-footer">
+            <p id="modalDuration" class="modal-duration"></p>
+            <p id="modalTime" class="modal-time"></p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+  <datalist id="modelOptions"></datalist>
+  <script src="./config.js" defer></script>
+  <script src="./error-utils.js" defer></script>
+  <script src="./api.js" defer></script>
+  <script src="./gallery.js" defer></script>
+  <script src="./gallery-lazy.js" defer></script>
+  <script src="./gallery-batch.js" defer></script>
+  <script src="./site-rotation.js" defer></script>
+  <script src="./rotation-summary.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="./gallery-layout.js" defer></script>
+  <script src="./custom-select.js" defer></script>
+  <script src="./gallery-delete.js" defer></script>
+  <script src="./gallery-dim.js" defer></script>
+  <script src="./gallery-task-controls.js" defer></script>
+  <script src="./modal-zoom.js" defer></script>
+</body>
+</html>
