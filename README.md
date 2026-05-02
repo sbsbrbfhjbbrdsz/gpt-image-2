@@ -14,7 +14,7 @@
 ## 使用
 
 不要直接打开index.html 来用
--非image-2不要用image接口要换 Resp流
+- 非image-2不要用image接口要换 Resp流
 
 没有 Node.js。需要安装
 
