@@ -17,7 +17,7 @@
 不要直接打开index.html 来用
 - 非image-2不要用image接口要换 Resp流
 - 如果你生不了 是账号 或者中转站的问题 不是程序问题
-没有 Node.js。需要安装
+- 没有 Node.js。需要安装
 
 已有 Node.js 可以直接运行：
 
