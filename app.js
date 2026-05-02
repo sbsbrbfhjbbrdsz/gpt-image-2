@@ -226,6 +226,7 @@
       setLog(`已删除站点：${oldSite.name}`);
     });
     el.apiKey.addEventListener("focus", () => { el.apiKey.type = "text"; });
+    el.apiKey.addEventListener("blur", () => { el.apiKey.type = "password"; });
     if (el.siteConcurrency) {
       el.siteConcurrency.addEventListener("change", () => {
         el.siteConcurrency.value = readConcurrencyLimit();
@@ -965,8 +966,8 @@
       return;
     }
     const options = getImageOptions(groups.generate);
-    if (!context.pendingRotation && !isResponsesApiMode(context.apiMode) && isLikelyResponsesModel(context.model)) {
-      setLog("这个模型看起来需要走 Responses API；请把“调用接口”切换为 Responses API 工具端点。", true);
+    if (!context.pendingRotation && !isResponsesApiMode(context.apiMode) && !isImageApiModel(context.model)) {
+      showBlockingMessage(formatImageApiModelWarning(context.model));
       return;
     }
     const readInput = createResponsesInputReader(prompt, []);
@@ -1034,8 +1035,8 @@
   }
   async function queueImageEditTask(group, context, prompt, files, mask, meta, doneText) {
     const options = getImageOptions(group);
-    if (!context.pendingRotation && !isResponsesApiMode(context.apiMode) && isLikelyResponsesModel(context.model)) {
-      setLog("这个模型看起来需要走 Responses API；请把“调用接口”切换为 Responses API 工具端点。", true);
+    if (!context.pendingRotation && !isResponsesApiMode(context.apiMode) && !isImageApiModel(context.model)) {
+      showBlockingMessage(formatImageApiModelWarning(context.model));
       return;
     }
     const readInput = createResponsesInputReader(prompt, files);
@@ -1067,7 +1068,14 @@
     return { model: context.model, stream: true, tool_choice: context.toolChoice, tools: [{ type: "image_generation", action, ...toolOptions, ...options }], input };
   }
   function assertImageApiAllowed(model) {
-    if (isLikelyResponsesModel(model)) throw new Error("这个模型看起来需要走 Responses API；请把“调用接口”切换为 Responses API 工具端点。");
+    if (isImageApiModel(model)) return;
+    const error = new Error(formatImageApiModelWarning(model));
+    error.imageApiModelBlocked = true;
+    throw error;
+  }
+  function showBlockingMessage(message) {
+    setLog(message, true);
+    window.alert(message);
   }
   async function fetchModels(options = {}) {
     const silent = Boolean(options.silent);
@@ -1234,8 +1242,13 @@
   function getUnifiedPreferredModel() {
     return normalizeSelectedModel({ selectedModels: state.preferredModels });
   }
-  function isLikelyResponsesModel(model) {
-    return /^gpt-\d/i.test(model) && !/image|img/i.test(model);
+  function isImageApiModel(model) {
+    const value = String(model || "").trim().toLowerCase();
+    return /^gpt-image-\d/.test(value) || /^image-\d/.test(value) || /(^|[-_/])image-\d/.test(value);
+  }
+  function formatImageApiModelWarning(model) {
+    const name = String(model || "").trim() || "当前模型";
+    return `${name} 不能使用 Image API 接口。Image API 只建议用于 gpt-image-2 / image-2 这类图片模型；gpt-5.5 等模型请把“调用接口”切换为 Responses API 工具端点。`;
   }
   function isResponsesApiMode(value) {
     return value === "responses" || value === "responses-stream";
@@ -1326,6 +1339,7 @@
     } catch (error) {
       const message = error.name === "AbortError" ? "任务已取消。" : explainFailure(formatError(error));
       appendLog(message, true, task);
+      if (error && error.imageApiModelBlocked) window.alert(message);
       updateGalleryItemData(task.item, { taskStatus: "failed", actualSize: "失败", sizeNote: "失败", errorText: message });
     } finally {
       if (task.timer) window.clearInterval(task.timer);
