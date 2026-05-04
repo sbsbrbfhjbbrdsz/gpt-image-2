@@ -680,7 +680,7 @@
   }
   function bindPreview(input, container) {
     input.addEventListener("change", () => {
-      renderPreviews(input.files, container);
+      renderPreviews(input, container);
     });
   }
   function bindFullscreenDrop() {
@@ -2301,13 +2301,13 @@
   function clearResultText() {
     state.lastSizeSignature = "";
   }
-  function renderPreviews(fileList, container) {
+  function renderPreviews(input, container) {
     const key = container.id;
     const oldUrls = state.previewUrls.get(key) || [];
     oldUrls.forEach((url) => URL.revokeObjectURL(url));
     const urls = [];
     container.innerHTML = "";
-    Array.from(fileList || []).forEach((file) => {
+    Array.from(input.files || []).forEach((file, index) => {
       const url = URL.createObjectURL(file);
       urls.push(url);
       const item = document.createElement("div");
@@ -2315,13 +2315,28 @@
       const image = document.createElement("img");
       image.alt = file.name;
       image.src = url;
-      const name = document.createElement("div");
-      name.className = "preview-name";
-      name.textContent = file.name;
-      item.append(image, name);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "preview-delete";
+      remove.textContent = "删除";
+      remove.title = "删除这张图片";
+      remove.setAttribute("aria-label", "删除这张图片");
+      remove.addEventListener("click", () => removePreviewFile(input, index));
+      item.append(image, remove);
       container.append(item);
     });
     state.previewUrls.set(key, urls);
+  }
+  function removePreviewFile(input, removeIndex) {
+    const files = Array.from(input.files || []).filter((file, index) => index !== removeIndex);
+    try {
+      const transfer = new DataTransfer();
+      files.forEach((file) => transfer.items.add(file));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch {
+      setLog("当前浏览器不允许直接删除已选择文件，请重新选择图片。", true);
+    }
   }
   function setLog(message, isError = false, task = null) {
     state.logLineCount = 0;
@@ -2822,6 +2837,7 @@
   }
   window.ImageToolApp = {
     cancelGalleryTask,
+    closeGalleryModal,
     getConfig() { return state.config; },
     updateRotationConfig(mutator) { persistActiveSiteFromInputs({ saveParameters: false }); if (typeof mutator === "function") mutator(state.config); saveConfig(); applyActiveSiteToInputs(); processTaskQueue(); return state.config; },
     handleGalleryItemsDeleted(items = []) { Array.from(items).forEach((item) => { if (item && item.dataset) state.gallerySignatures.delete(item.dataset.signature || ""); if (item && item.galleryData && item.galleryData.updateTimer) window.clearTimeout(item.galleryData.updateTimer); }); renderGalleryFilters(); applyGalleryFilters(); },

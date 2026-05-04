@@ -1220,7 +1220,7 @@ input[type="range"] {
 
 .preview-item {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: 1;
   border: 0;
   border-radius: 8px;
@@ -1229,6 +1229,7 @@ input[type="range"] {
 }
 
 .preview-item img {
+  border-radius: inherit;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1236,18 +1237,26 @@ input[type="range"] {
   transition: filter 0.16s ease;
 }
 
-.preview-name {
+.preview-delete {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 3px 5px;
-  background: rgba(3, 8, 14, 0.72);
-  color: var(--font-color);
+  width: 100%;
+  min-height: 16px;
+  padding: 0;
+  border: 0;
+  background: var(--gallery-chip);
+  color: var(--danger);
   font-size: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 700;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.preview-delete:hover {
+  color: var(--danger);
+  background: var(--gallery-delete-selected-bg);
 }
 
 .drop-overlay {
