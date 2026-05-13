@@ -39,6 +39,7 @@
     button.title = "删除当前图片";
     button.setAttribute("aria-label", "删除当前图片");
     state.nav.append(button);
+    document.dispatchEvent(new CustomEvent("modal-nav-updated"));
   }
 
   function handleClick(event) {

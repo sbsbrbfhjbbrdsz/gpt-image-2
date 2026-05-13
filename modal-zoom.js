@@ -26,6 +26,9 @@
     }
     createOverlay();
     state.source.addEventListener("click", openFromSource);
+    state.source.addEventListener("mousemove", syncSourceCursor);
+    state.source.addEventListener("mouseleave", clearSourceCursor);
+    state.source.addEventListener("load", clearSourceCursor);
     window.addEventListener("keydown", handleKeydown, true);
   }
 
@@ -69,12 +72,41 @@
 
   function openFromSource(event) {
     const src = state.source.currentSrc || state.source.src;
-    if (!src || state.source.hidden || state.source.offsetParent === null) {
+    if (!src || state.source.hidden || state.source.offsetParent === null || !isInsideRenderedImage(event)) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     openZoom(src);
+  }
+
+  function syncSourceCursor(event) {
+    state.source.classList.toggle("can-zoom", isInsideRenderedImage(event));
+  }
+
+  function clearSourceCursor() {
+    state.source.classList.remove("can-zoom");
+  }
+
+  function isInsideRenderedImage(event) {
+    const rect = state.source.getBoundingClientRect();
+    const naturalWidth = state.source.naturalWidth;
+    const naturalHeight = state.source.naturalHeight;
+    if (!rect.width || !rect.height || !naturalWidth || !naturalHeight) {
+      return false;
+    }
+    const imageRatio = naturalWidth / naturalHeight;
+    const frameRatio = rect.width / rect.height;
+    let renderedWidth = rect.width;
+    let renderedHeight = rect.height;
+    if (imageRatio > frameRatio) {
+      renderedHeight = rect.width / imageRatio;
+    } else {
+      renderedWidth = rect.height * imageRatio;
+    }
+    const left = rect.left + (rect.width - renderedWidth) / 2;
+    const top = rect.top + (rect.height - renderedHeight) / 2;
+    return event.clientX >= left && event.clientX <= left + renderedWidth && event.clientY >= top && event.clientY <= top + renderedHeight;
   }
 
   function openZoom(src) {

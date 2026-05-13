@@ -1,5 +1,5 @@
 (() => {
-  const START_DELAY = 280;
+  const START_DELAY = 70;
   const LOAD_TIMEOUT = 20000;
   const LOAD_AHEAD = 520;
   const state = {
@@ -12,6 +12,7 @@
     taskBusy: false,
     timer: 0,
     lastStart: 0,
+    restoringUntil: 0,
   };
 
   function init() {
@@ -34,11 +35,11 @@
     }
     const galleryItem = item || image.closest(".gallery-item");
     const current = image.getAttribute("src") || "";
-    if (current === source || image.dataset.lazySrc === source) {
+    if (current === source || image.dataset.lazySrc === source || image.dataset.lazyLoadedSrc === source) {
       return true;
     }
     image.loading = "eager";
-    image.decoding = "async";
+    image.decoding = "sync";
     image.fetchPriority = "low";
     if (shouldLoadImmediately(source, galleryItem, options)) {
       assignImmediateSource(image, source);
@@ -181,26 +182,15 @@
 
   function preloadSource(image, source) {
     const controller = "AbortController" in window ? new AbortController() : null;
-    const token = { controller, objectUrl: "", source, done: false };
+    const token = { controller, source, done: false };
     image.__imageToolLazy = token;
     image.dataset.lazyState = "loading";
-    fetch(source, { cache: "force-cache", signal: controller && controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.blob();
-      })
-      .then((blob) => {
-        token.objectUrl = URL.createObjectURL(blob);
-        revealImage(image, source, token, token.objectUrl);
-      })
-      .catch((error) => {
-        if (error && error.name === "AbortError") {
-          return;
-        }
-        revealImage(image, source, token, source);
-      });
+    const preload = new Image();
+    token.preload = preload;
+    preload.decoding = "async";
+    preload.onload = () => revealImage(image, source, token, source);
+    preload.onerror = () => revealImage(image, source, token, source);
+    preload.src = source;
     return token;
   }
 
@@ -211,8 +201,10 @@
     state.pending.delete(image);
     state.queue = state.queue.filter((queuedImage) => queuedImage !== image);
     delete image.dataset.lazySrc;
+    image.dataset.lazyLoadedSrc = source;
     image.dataset.lazyState = "loaded";
     image.loading = "eager";
+    image.decoding = "sync";
     if (item) {
       item.classList.remove("gallery-lazy-pending", "gallery-lazy-loading");
     }
@@ -235,15 +227,20 @@
     if (token && token !== activeToken || activeToken && activeToken.source !== source) {
       return;
     }
-    if (activeToken) {
-      activeToken.done = true;
-      if (activeToken.controller) {
-        activeToken.controller.abort();
+      if (activeToken) {
+        activeToken.done = true;
+        if (activeToken.controller) {
+          activeToken.controller.abort();
+        }
+        if (activeToken.preload) {
+          activeToken.preload.onload = null;
+          activeToken.preload.onerror = null;
+        }
+        delete image.__imageToolLazy;
       }
-      delete image.__imageToolLazy;
-    }
     state.pending.delete(image);
     image.loading = "eager";
+    image.decoding = "sync";
     const item = image.closest(".gallery-item");
     let finished = false;
     const finish = (imageLoaded) => {
@@ -255,14 +252,16 @@
       if (image.dataset.lazySrc === source) {
         delete image.dataset.lazySrc;
       }
-      image.dataset.lazyState = imageLoaded ? "loaded" : "error";
-      if (token && token.objectUrl) {
-        URL.revokeObjectURL(token.objectUrl);
+      if (imageLoaded) {
+        image.dataset.lazyLoadedSrc = source;
       }
+      image.dataset.lazyState = imageLoaded ? "loaded" : "error";
       if (item) {
         item.classList.remove("gallery-lazy-pending", "gallery-lazy-loading");
-        item.classList.add("gallery-lazy-enter");
-        window.setTimeout(() => item.classList.remove("gallery-lazy-enter"), 650);
+        if (performance.now() > state.restoringUntil) {
+          item.classList.add("gallery-lazy-enter");
+          window.setTimeout(() => item.classList.remove("gallery-lazy-enter"), 650);
+        }
       }
       scheduleDrain();
       schedulePendingScan();
@@ -411,10 +410,32 @@
     if (isPageHidden()) {
       return;
     }
+    state.restoringUntil = performance.now() + 1200;
+    warmLoadedImages();
     revealReadyImages();
     state.lastStart = 0;
     schedulePendingScan();
     scheduleDrain();
+  }
+
+  function warmLoadedImages() {
+    document.querySelectorAll("#imageGallery img[data-lazy-loaded-src]").forEach((image) => {
+      if (!isViewportImage(image)) {
+        return;
+      }
+      image.loading = "eager";
+      image.decoding = "sync";
+      if (typeof image.decode === "function" && image.currentSrc) {
+        image.decode().catch(() => {});
+      }
+    });
+  }
+
+  function isViewportImage(image) {
+    const rect = image.getBoundingClientRect();
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight || 0;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth || 0;
+    return rect.bottom >= -LOAD_AHEAD && rect.right >= 0 && rect.top <= viewportHeight + LOAD_AHEAD && rect.left <= viewportWidth;
   }
 
   function isPageHidden() {
@@ -425,7 +446,7 @@
     Array.from(state.active).forEach((image) => {
       const token = image && image.__imageToolLazy;
       if (token && token.ready && image.dataset.lazySrc === token.source) {
-        revealImage(image, token.source, token, token.displaySource || token.objectUrl || token.source);
+        revealImage(image, token.source, token, token.displaySource || token.source);
       }
     });
   }
