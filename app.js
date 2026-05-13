@@ -2206,7 +2206,7 @@
     }
     el.modalDownload.href = data.dataUrl;
     el.modalDownload.download = `vibeapi-gallery-${Date.now()}.${data.format === "jpeg" ? "jpg" : data.format || "png"}`;
-    if (el.modalTime) el.modalTime.textContent = [data.mode, data.time].filter(Boolean).join("·");
+    if (el.modalTime) el.modalTime.textContent = [data.siteName, data.mode, data.time].filter(Boolean).join(" · ");
     if (el.modalDuration) {
       el.modalDuration.textContent = data.durationText || "";
       el.modalDuration.classList.toggle("clickable", logs.length > 0);
